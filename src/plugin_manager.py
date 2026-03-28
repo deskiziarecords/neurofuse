@@ -1,8 +1,7 @@
-# file: src/plugin_manager.py
 import importlib.util
 from pathlib import Path
 from typing import Dict
-from .plugins.base_plugin import BasePlugin
+from neurofuse_sdk import BasePlugin
 
 class PluginManager:
     def __init__(self, repo_root: str | Path):

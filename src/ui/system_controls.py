@@ -2,7 +2,7 @@
 import streamlit as st
 import asyncio
 from src.orchestrator import Orchestrator
-from src.schemas.control_command import ControlCommand
+from neurofuse_sdk.schemas.control_command import ControlCommand
 
 def render_system_card(orch: Orchestrator, name: str):
     status = orch.get_status(name)

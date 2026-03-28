@@ -1,8 +1,7 @@
-# file: src/config_store.py
-import yaml, os
+import yaml
 from pathlib import Path
 from typing import List
-from .schemas.system_config import SystemConfig
+from neurofuse_sdk.schemas.system_config import SystemConfig
 
 # Base relative to repo root
 CONFIG_DIR = Path("configs")

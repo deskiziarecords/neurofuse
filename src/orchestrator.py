@@ -7,9 +7,9 @@ from typing import Optional, Dict, Any, List
 from .plugin_manager import PluginManager
 from .config_store import ConfigStore
 from .execution_engine import ExecutionEngine
-from .monitor import Monitor
-from .schemas.control_command import ControlCommand
-from .schemas.system_config import SystemConfig
+from neurofuse_sdk import Monitor
+from neurofuse_sdk.schemas.control_command import ControlCommand
+from neurofuse_sdk.schemas.system_config import SystemConfig
 
 @dataclass
 class SystemStatus:

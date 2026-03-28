@@ -4,9 +4,8 @@ import subprocess
 import sys
 import os
 from typing import Dict, Optional, Any
-from .plugins.base_plugin import BasePlugin
+from neurofuse_sdk import BasePlugin, Monitor
 from .utils.async_helpers import create_plugin_task
-from .monitor import Monitor
 
 class ExecutionEngine:
     def __init__(self):
@@ -103,7 +102,7 @@ class ExecutionEngine:
 
     async def _forward_metrics(self, plugin: BasePlugin, name: str, monitor: Monitor):
         async for metric in plugin.stream_metrics():
-            from .schemas.metric_sample import MetricSample
+            from neurofuse_sdk.schemas.metric_sample import MetricSample
             if isinstance(metric, dict):
                 sample = MetricSample(system=name, **metric)
             else:

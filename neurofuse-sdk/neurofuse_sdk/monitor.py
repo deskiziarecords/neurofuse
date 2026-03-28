@@ -1,6 +1,6 @@
 # file: src/monitor.py
 import asyncio
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from .schemas.metric_sample import MetricSample
 
 class Monitor:

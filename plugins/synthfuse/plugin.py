@@ -1,8 +1,4 @@
-# file: plugins/synthfuse/plugin.py
-import asyncio
-import random
-from typing import Dict, Any, AsyncGenerator
-from src.plugins.base_plugin import BasePlugin
+from neurofuse_sdk import BasePlugin
 
 class Plugin(BasePlugin):
     """Synthfuse: Synthetic Data Integration Engine."""
