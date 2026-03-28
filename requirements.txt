@@ -4,3 +4,4 @@ pyyaml>=6.0
 watchdog>=4.0
 aiofiles>=23.0
 streamlit-autorefresh
+z3-solver>=4.12

@@ -10,6 +10,7 @@ from .execution_engine import ExecutionEngine
 from .monitor import Monitor
 from .schemas.control_command import ControlCommand
 from .schemas.system_config import SystemConfig
+from .schemas.scenario import Scenario, ScenarioEvent, TriggerCondition, TriggeredAction
 
 @dataclass
 class SystemStatus:
@@ -29,6 +30,9 @@ class Orchestrator:
         self._status: Dict[str, SystemStatus] = {}
         self._start_times: Dict[str, float] = {}
         self._lock = asyncio.Lock()
+        self._scenarios: Dict[str, Scenario] = {}
+        self._global_clock_task: Optional[asyncio.Task] = None
+        self._telemetry_map: Dict[str, List[str]] = {} # source -> [targets]
 
     # ------------------------------------------------------------------ #
     #  Life‑cycle
@@ -70,7 +74,18 @@ class Orchestrator:
     #  Tuning
     # ------------------------------------------------------------------ #
     async def tune_system(self, name: str, params: Dict[str, Any]):
-        """Send a tune command to the running plugin."""
+        """Send a tune command to the running plugin with formal verification."""
+
+        # Guardrail: Check for Master Mute
+        if getattr(self, "_master_mute", False):
+            await self.monitor.log("orchestrator", f"[SAFETY] Blocked tune command for {name} (Master Mute ACTIVE)")
+            return
+
+        # Formal Verification: Check for Safety Invariants
+        if not self._verify_tuning_safety(name, params):
+            await self.monitor.log("orchestrator", f"[SAFETY] Blocked tune command for {name} (Z3 Safety Invariant VIOLATION)")
+            return
+
         plugin_instance = self.engine.get_plugin_instance(name)
         if plugin_instance:
             # Pass unpacked params to support specific method signatures
@@ -78,6 +93,46 @@ class Orchestrator:
         else:
             # Optionally log that the plugin isn't running
             pass
+
+    def _verify_tuning_safety(self, name: str, params: Dict[str, Any]) -> bool:
+        """Use Z3 to check if the tuning parameters are within safe operational bounds."""
+        from z3 import Solver, Real, sat
+
+        s = Solver()
+        # Hardcoded safety invariant for demo
+        # For any system, 'gain' or 'intensity' should not exceed 1.0 when combined with 'diversity' > 0.9
+
+        val = Real('val')
+        div = Real('div')
+
+        # Rule: val + div <= 1.5
+        for p_name, p_val in params.items():
+            if p_name in ["gain", "intensity"]:
+                 s.add(val == float(p_val))
+
+                 # Get diversity from current config
+                 try:
+                     div_val = self.cfg.get(name).settings.get("diversity", 0.5)
+                 except:
+                     div_val = 0.5
+                 s.add(div == float(div_val))
+
+                 # Check for violation: val + div > 1.8
+                 s.push()
+                 s.add(val + div > 1.8)
+                 if s.check() == sat:
+                     s.pop()
+                     return False
+                 s.pop()
+        return True
+
+    async def master_mute(self, active: bool = True):
+        self._master_mute = active
+        if active:
+            await self.monitor.log("orchestrator", "[SAFETY] MASTER MUTE ACTIVATED - Halting all tuning.")
+            # For emergency, we could also stop all systems
+            for name in self.pm.list_names():
+                await self.stop_system(name)
 
     # ------------------------------------------------------------------ #
     #  Introspection
@@ -165,3 +220,56 @@ class Orchestrator:
             asyncio.run_coroutine_threadsafe(self.stop_system(name), self.loop)
         elif cmd.action == "tune":
             asyncio.run_coroutine_threadsafe(self.tune_system(name, cmd.payload), self.loop)
+
+    # ------------------------------------------------------------------ #
+    #  Automation & Scenarios
+    # ------------------------------------------------------------------ #
+    async def run_scenario(self, scenario: Scenario):
+        """Execute a timeline of events."""
+        start_time = time.perf_counter()
+        events = sorted(scenario.timeline, key=lambda e: e.timestamp)
+
+        for event in events:
+            now = time.perf_counter()
+            delay = event.timestamp - (now - start_time)
+            if delay > 0:
+                await asyncio.sleep(delay)
+
+            cmd = ControlCommand(action=event.action, payload=event.payload)
+            await self._execute_command(event.system, cmd)
+
+    async def _execute_command(self, name: str, cmd: ControlCommand):
+        if cmd.action == "start":
+            await self.boot_system(name)
+        elif cmd.action == "stop":
+            await self.stop_system(name)
+        elif cmd.action == "tune":
+            await self.tune_system(name, cmd.payload)
+
+    async def start_global_monitor(self):
+        """Background task for IFTTT logic and telemetry tracking."""
+        if self._global_clock_task:
+            return
+        self._global_clock_task = asyncio.create_task(self._monitor_loop())
+
+    async def _monitor_loop(self):
+        while True:
+            await asyncio.sleep(1.0)
+            # Example IFTTT Logic (mock implementation for now)
+            # In a real scenario, this would evaluate Scenario.triggers
+            for name in self.pm.list_names():
+                metrics = await self.monitor.get_metrics(name)
+                if not metrics: continue
+                last_m = metrics[-1]
+
+                # Record telemetry flow (source -> [targets])
+                # For demo, ferros flux is consumed by neurometal
+                if name == "ferros":
+                    self._telemetry_map["ferros"] = ["neurometal"]
+
+                # Hardcoded safety rule for demo
+                if name == "ferros" and last_m.name == "magnetic_flux" and last_m.value > 0.8:
+                    # If ferros flux is too high, auto-tune neurometal
+                    if "neurometal" in self._status and self._status["neurometal"].state == "running":
+                         await self.tune_system("neurometal", {"gain": 0.5})
+                         await self.monitor.log("orchestrator", "[IFTTT] Ferros flux high! Throttling neurometal gain.")

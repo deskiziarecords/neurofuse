@@ -1,6 +1,7 @@
 name: synthfuse
 version: 0.1.0
 enabled: true
-settings: {}
+settings:
+  diversity: 0.95
 launch_mode: asyncio
 env: {}

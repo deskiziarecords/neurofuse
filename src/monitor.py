@@ -1,7 +1,8 @@
 # file: src/monitor.py
 import asyncio
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from .schemas.metric_sample import MetricSample
+from .schemas.payload import Payload
 
 class Monitor:
     _instance: Optional["Monitor"] = None
@@ -11,6 +12,7 @@ class Monitor:
             cls._instance = super().__new__(cls)
             cls._instance._logs: Dict[str, List[str]] = {}
             cls._instance._metrics: Dict[str, List[MetricSample]] = {}
+            cls._instance._payloads: Dict[str, List[Payload]] = {}
             cls._instance._lock: Optional[asyncio.Lock] = None
         return cls._instance
 
@@ -38,3 +40,12 @@ class Monitor:
     async def get_metrics(self, system: str) -> List[MetricSample]:
         async with self._get_lock():
             return list(self._metrics.get(system, []))
+
+    async def payload(self, system: str, payload: Payload):
+        async with self._get_lock():
+            self._payloads.setdefault(system, []).append(payload)
+            self._payloads[system] = self._payloads[system][-100:]
+
+    async def get_payloads(self, system: str) -> List[Payload]:
+        async with self._get_lock():
+            return list(self._payloads.get(system, []))

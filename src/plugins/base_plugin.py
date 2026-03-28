@@ -41,3 +41,7 @@ class BasePlugin(ABC):
     async def stream_metrics(self) -> AsyncGenerator[Dict[str, Any], None]:
         """Yield metric dicts (e.g., loss, throughput)."""
         ...
+
+    async def stream_payloads(self) -> AsyncGenerator[Any, None]:
+        """Yield Payload objects as they are produced."""
+        if False: yield None

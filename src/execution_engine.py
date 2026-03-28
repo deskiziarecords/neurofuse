@@ -86,12 +86,13 @@ class ExecutionEngine:
         return self._instances.get(name)
 
     async def _forward(self, plugin: BasePlugin, name: str):
-        """Pipe logs/metrics to the monitor."""
+        """Pipe logs/metrics/payloads to the monitor."""
         monitor = Monitor()
         try:
             log_task = asyncio.create_task(self._forward_logs(plugin, name, monitor))
             metric_task = asyncio.create_task(self._forward_metrics(plugin, name, monitor))
-            await asyncio.gather(log_task, metric_task)
+            payload_task = asyncio.create_task(self._forward_payloads(plugin, name, monitor))
+            await asyncio.gather(log_task, metric_task, payload_task)
         except asyncio.CancelledError:
             pass
         except Exception:
@@ -109,6 +110,10 @@ class ExecutionEngine:
             else:
                 sample = metric
             await monitor.metric(name, sample)
+
+    async def _forward_payloads(self, plugin: BasePlugin, name: str, monitor: Monitor):
+        async for payload in plugin.stream_payloads():
+            await monitor.payload(name, payload)
 
     async def _forward_subprocess(self, proc: asyncio.subprocess.Process, name: str):
         monitor = Monitor()

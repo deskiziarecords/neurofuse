@@ -39,10 +39,11 @@ def render_system_card(orch: Orchestrator, name: str):
                     orch.send_command(name, ControlCommand(action="tune", payload=new_vals))
                     st.success(f"Tuning command sent for {name}")
 
-        # Real-time logs preview (simple tail)
+        # Real-time logs and artifacts preview
         if status.state == "running":
-            with st.expander("Recent Logs"):
-                # Use threadsafe call to get logs
+            tab_logs, tab_artifacts = st.tabs(["Recent Logs", "Artifacts"])
+
+            with tab_logs:
                 try:
                     fut = asyncio.run_coroutine_threadsafe(orch.stream_logs(name, limit=10), orch.loop)
                     logs = fut.result(timeout=0.5)
@@ -53,3 +54,21 @@ def render_system_card(orch: Orchestrator, name: str):
                         st.text("No logs yet...")
                 except Exception as e:
                     st.text(f"Waiting for logs... ({e})")
+
+            with tab_artifacts:
+                try:
+                    from src.monitor import Monitor
+                    monitor = Monitor()
+                    fut_p = asyncio.run_coroutine_threadsafe(monitor.get_payloads(name), orch.loop)
+                    payloads = fut_p.result(timeout=0.5)
+                    if payloads:
+                        for p in payloads:
+                            st.write(f"📄 {p.id} ({p.mime_type})")
+                            if p.uri:
+                                st.caption(f"URI: {p.uri}")
+                            if st.button("View Details", key=f"view_{name}_{p.id}"):
+                                st.json(p.model_dump())
+                    else:
+                        st.text("No artifacts produced yet.")
+                except Exception as e:
+                    st.text(f"Loading artifacts... ({e})")
