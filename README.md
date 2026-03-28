@@ -1,5 +1,6 @@
 # neurofuse
 The Intelligence Welding Studio
+[neurofuse](https://github.com/deskiziarecords/neurofuse/blob/main/neuro-all.jpg)
 
 
 ##  Table of Contents  
