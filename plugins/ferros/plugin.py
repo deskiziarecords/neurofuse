@@ -40,3 +40,13 @@ class Plugin(BasePlugin):
         while True:
             metric = await self._metrics.get()
             yield metric
+
+    async def receive_data(self, source: str, data: Dict[str, Any]) -> None:
+        """Modulate intensity based on incoming synthesis data."""
+        if source == "synthfuse" and data.get("name") == "synthesis_score":
+            score = data.get("value", 0.5)
+            # Higher synthesis score boosts magnetic alignment intensity
+            new_intensity = min(1.0, 0.5 + score)
+            if abs(new_intensity - self.intensity) > 0.05:
+                self.intensity = new_intensity
+                await self._logs.put(f"[Ferros] MODULATION: Synthfuse score {score:.2f} detected. Intensity shifted to {self.intensity:.2f}")

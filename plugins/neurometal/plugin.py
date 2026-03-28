@@ -40,3 +40,13 @@ class Plugin(BasePlugin):
         while True:
             metric = await self._metrics.get()
             yield metric
+
+    async def receive_data(self, source: str, data: Dict[str, Any]) -> None:
+        """Adjust neural gain based on magnetic alignment stability."""
+        if source == "ferros" and data.get("name") == "magnetic_flux":
+            flux = data.get("value", 0.5)
+            # High flux provides a more stable substrate for high-gain welding
+            new_gain = flux * 2.0
+            if abs(new_gain - self.gain) > 0.1:
+                self.gain = new_gain
+                await self._logs.put(f"[Neurometal] SYNCHRONIZE: Ferros flux {flux:.2f} detected. Neural gain recalibrated to {self.gain:.2f}")

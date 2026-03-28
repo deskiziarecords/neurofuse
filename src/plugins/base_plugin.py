@@ -41,3 +41,7 @@ class BasePlugin(ABC):
     async def stream_metrics(self) -> AsyncGenerator[Dict[str, Any], None]:
         """Yield metric dicts (e.g., loss, throughput)."""
         ...
+
+    async def receive_data(self, source: str, data: Dict[str, Any]) -> None:
+        """Process data received from another system (optional)."""
+        pass

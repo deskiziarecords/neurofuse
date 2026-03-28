@@ -29,6 +29,22 @@ class Orchestrator:
         self._status: Dict[str, SystemStatus] = {}
         self._start_times: Dict[str, float] = {}
         self._lock = asyncio.Lock()
+        
+        # Subscribe to monitor metrics for inter-plugin routing
+        self.monitor.subscribe(self.route_data)
+
+    async def route_data(self, source: str, sample: Any):
+        """Route incoming telemetry to all other running plugins."""
+        # Convert Pydantic model to dict if needed
+        data = sample.model_dump() if hasattr(sample, 'model_dump') else sample
+        
+        # Avoid routing back to same system
+        for name, instance in self.engine._instances.items():
+            if name != source:
+                try:
+                    await instance.receive_data(source, data)
+                except Exception:
+                    pass
 
     # ------------------------------------------------------------------ #
     #  Life‑cycle

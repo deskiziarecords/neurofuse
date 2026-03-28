@@ -12,6 +12,7 @@ class Monitor:
             cls._instance._logs: Dict[str, List[str]] = {}
             cls._instance._metrics: Dict[str, List[MetricSample]] = {}
             cls._instance._lock: Optional[asyncio.Lock] = None
+            cls._instance._subscriptions: List[Any] = []
         return cls._instance
 
     def _get_lock(self) -> asyncio.Lock:
@@ -30,6 +31,18 @@ class Monitor:
         async with self._get_lock():
             self._metrics.setdefault(system, []).append(sample)
             self._metrics[system] = self._metrics[system][-500:]  # keep recent
+            
+            # Broadcast to subscribers (non-blocking)
+            for callback in self._subscriptions:
+                try:
+                    # Assume it's an async function
+                    asyncio.create_task(callback(system, sample))
+                except Exception:
+                    pass
+
+    def subscribe(self, callback):
+        """Register a callback for all metrics."""
+        self._subscriptions.append(callback)
 
     async def get_logs(self, system: str, limit: int = 200) -> List[str]:
         async with self._get_lock():
