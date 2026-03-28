@@ -9,19 +9,21 @@ class Plugin(BasePlugin):
         self._running = True
         self._logs = asyncio.Queue()
         self._metrics = asyncio.Queue()
+        self.rate = self.config.get("settings", {}).get("rate", 0.5)
 
         while self._running:
             await asyncio.sleep(1)
             # Emit a fake metric
-            await self._metrics.put({"name": "dummy_value", "value": random.random()})
-            await self._logs.put(f"[{self.name}] tick")
+            await self._metrics.put({"name": "dummy_value", "value": random.random() * self.rate})
+            await self._logs.put(f"[{self.name}] tick (rate: {self.rate:.2f})")
 
     async def stop(self) -> None:
         self._running = False
 
-    async def tune(self, params: Dict[str, Any]) -> None:
-        self.config["settings"].update(params)
-        await self._logs.put(f"[{self.name}] tuned with {params}")
+    async def tune(self, rate: float = 0.5) -> None:
+        self.rate = rate
+        self.config.setdefault("settings", {})["rate"] = rate
+        await self._logs.put(f"[{self.name}] rate tuned to {rate}")
 
     async def stream_logs(self) -> AsyncGenerator[str, None]:
         while True:

@@ -28,7 +28,7 @@ class BasePlugin(ABC):
         ...
 
     @abstractmethod
-    async def tune(self, params: Dict[str, Any]) -> None:
+    async def tune(self, **kwargs) -> None:
         """Apply runtime tuning parameters (e.g., learning rate, gain)."""
         ...
 

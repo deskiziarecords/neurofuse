@@ -73,7 +73,8 @@ class Orchestrator:
         """Send a tune command to the running plugin."""
         plugin_instance = self.engine.get_plugin_instance(name)
         if plugin_instance:
-            await plugin_instance.tune(params)
+            # Pass unpacked params to support specific method signatures
+            await plugin_instance.tune(**params)
         else:
             # Optionally log that the plugin isn't running
             pass
