@@ -1,13 +1,15 @@
 # file: src/plugin_manager.py
 import importlib.util
+import yaml
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List, Optional
 from .plugins.base_plugin import BasePlugin
 
 class PluginManager:
     def __init__(self, repo_root: str | Path):
         self.repo_root = Path(repo_root)
         self._plugins: Dict[str, type[BasePlugin]] = {}
+        self._remote_names: List[str] = []
 
     def load_all(self):
         # Look for plugins in the 'plugins' directory at the repo root
@@ -39,10 +41,19 @@ class PluginManager:
                 continue
             self._plugins[plugin_dir.name] = plugin_cls
 
-    def get(self, name: str) -> type[BasePlugin]:
+        # Load remote definitions from remotes.yaml
+        remote_file = self.repo_root / "configs" / "remotes.yaml"
+        if remote_file.exists():
+            with remote_file.open() as f:
+                data = yaml.safe_load(f) or {}
+                self._remote_names = list(data.keys())
+
+    def get(self, name: str) -> Optional[type[BasePlugin]]:
+        if name in self._remote_names:
+            return None # Remote plugins don't have a local class
         if name not in self._plugins:
             raise KeyError(f"Plugin {name} not found")
         return self._plugins[name]
 
     def list_names(self):
-        return list(self._plugins.keys())
+        return list(self._plugins.keys()) + self._remote_names

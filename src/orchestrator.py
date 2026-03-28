@@ -2,6 +2,7 @@
 import asyncio
 import inspect
 import time
+import yaml
 from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
 from .plugin_manager import PluginManager
@@ -44,6 +45,17 @@ class Orchestrator:
             self._status[name] = SystemStatus(name=name, state="starting")
         try:
             cfg = self.upsert_config(name)  # ensure config exists
+
+            # Auto-detect remote mode if configured in remotes.yaml
+            if name in getattr(self.pm, "_remote_names", []):
+                # Load remote config from remotes.yaml if not in standard config
+                remote_file = self.pm.repo_root / "configs" / "remotes.yaml"
+                with remote_file.open() as f:
+                    remotes = yaml.safe_load(f)
+                    if name in remotes:
+                        cfg.launch_mode = "remote"
+                        cfg.settings.update(remotes[name])
+
             plugin_cls = self.pm.get(name)
             await self.engine.start(name, plugin_cls, cfg.model_dump())
             async with self._lock:

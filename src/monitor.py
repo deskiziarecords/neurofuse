@@ -28,6 +28,23 @@ class Monitor:
             # keep only last 1000 lines
             self._logs[system] = self._logs[system][-1000:]
 
+        # Asyncly push to ChromaDB for long-term semantic memory
+        asyncio.create_task(self._push_to_chroma(system, line))
+
+    async def _push_to_chroma(self, system: str, line: str):
+        try:
+            import chromadb
+            client = chromadb.PersistentClient(path="memory/chroma")
+            collection = client.get_or_create_collection("system_logs")
+            import uuid
+            collection.add(
+                documents=[line],
+                metadatas=[{"system": system}],
+                ids=[str(uuid.uuid4())]
+            )
+        except:
+            pass
+
     async def metric(self, system: str, sample: MetricSample):
         async with self._get_lock():
             self._metrics.setdefault(system, []).append(sample)

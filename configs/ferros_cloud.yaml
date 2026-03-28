@@ -1,0 +1,6 @@
+name: ferros_cloud
+version: 0.1.0
+enabled: true
+settings: {}
+launch_mode: subprocess
+env: {}
