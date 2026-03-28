@@ -1,0 +1,18 @@
+[project]
+name = "neurofuse-sdk"
+version = "0.1.0"
+description = "The core SDK for developing autonomous systems compatible with the Neurofuse Studio."
+authors = [
+    { name = "Jules", email = "jules@neurofuse.studio" }
+]
+dependencies = [
+    "pydantic>=2.6",
+    "aiofiles>=23.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["neurofuse_sdk"]
