@@ -88,17 +88,20 @@ def render_system_card(orch: Orchestrator, name: str):
                     st.text("System offline.")
 
             with tab2:
+                if orch.master_mute:
+                    st.warning("Master Mute is ACTIVE. Tuning disabled.")
+
                 tunables = orch.get_tunable(name)
                 new_vals = {}
                 for key, (typ, default) in tunables.items():
                     widget_key = f"tune_{name}_{key}_field"
                     if typ == float:
-                        new_vals[key] = st.slider(key, 0.0, 5.0, value=float(default or 1.0), key=widget_key)
+                        new_vals[key] = st.slider(key, 0.0, 5.0, value=float(default or 1.0), key=widget_key, disabled=orch.master_mute)
                     elif typ == int:
-                        new_vals[key] = st.number_input(key, value=int(default or 0), step=1, key=widget_key)
+                        new_vals[key] = st.number_input(key, value=int(default or 0), step=1, key=widget_key, disabled=orch.master_mute)
                     else:
-                        new_vals[key] = st.text_input(key, value=str(default or ""), key=widget_key)
+                        new_vals[key] = st.text_input(key, value=str(default or ""), key=widget_key, disabled=orch.master_mute)
 
-                if st.button("Apply Parameters", key=f"apply_{name}"):
+                if st.button("Apply Parameters", key=f"apply_{name}", disabled=orch.master_mute):
                     orch.send_command(name, ControlCommand(action="tune", payload=new_vals))
                     st.success("Warp parameters updated.")

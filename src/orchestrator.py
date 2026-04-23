@@ -29,6 +29,8 @@ class Orchestrator:
         self._status: Dict[str, SystemStatus] = {}
         self._start_times: Dict[str, float] = {}
         self._lock = asyncio.Lock()
+        self.master_mute = False
+        self._telemetry_map: Dict[str, set] = {}
         
         # Subscribe to monitor metrics for inter-plugin routing
         self.monitor.subscribe(self.route_data)
@@ -43,6 +45,10 @@ class Orchestrator:
             if name != source:
                 try:
                     await instance.receive_data(source, data)
+                    # Track connection in telemetry map
+                    if source not in self._telemetry_map:
+                        self._telemetry_map[source] = set()
+                    self._telemetry_map[source].add(name)
                 except Exception:
                     pass
 
@@ -87,6 +93,9 @@ class Orchestrator:
     # ------------------------------------------------------------------ #
     async def tune_system(self, name: str, params: Dict[str, Any]):
         """Send a tune command to the running plugin."""
+        if self.master_mute:
+            return
+
         plugin_instance = self.engine.get_plugin_instance(name)
         if plugin_instance:
             # Pass unpacked params to support specific method signatures
@@ -180,4 +189,5 @@ class Orchestrator:
         elif cmd.action == "stop":
             asyncio.run_coroutine_threadsafe(self.stop_system(name), self.loop)
         elif cmd.action == "tune":
-            asyncio.run_coroutine_threadsafe(self.tune_system(name, cmd.payload), self.loop)
+            if not self.master_mute:
+                asyncio.run_coroutine_threadsafe(self.tune_system(name, cmd.payload), self.loop)
