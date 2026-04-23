@@ -109,7 +109,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Header Branding
-col_logo, col_title = st.columns([1, 4])
+col_logo, col_title, col_mute = st.columns([1, 4, 1])
 with col_logo:
     st.image("neuro-all.jpg", use_container_width=True)
 with col_title:
@@ -127,11 +127,39 @@ def get_orchestrator():
 
 orch = get_orchestrator()
 
+with col_mute:
+    st.write("")
+    st.write("")
+    mute = st.toggle("Master Mute", value=orch.master_mute, help="Safety guardrail: blocks all tuning commands when active.")
+    if mute != orch.master_mute:
+        orch.master_mute = mute
+        st.rerun()
+
 # ---- refresh loop ----
 st_autorefresh(interval=2000, key="main_datarefresh")
 
 placeholder = st.empty()
 with placeholder.container():
+    # Topology Graph
+    if orch._telemetry_map:
+        with st.expander("System Topology (Live Data Flows)", expanded=True):
+            mermaid_code = "graph LR\n"
+            for src, targets in orch._telemetry_map.items():
+                for tgt in targets:
+                    mermaid_code += f"    {src} --> {tgt}\n"
+            # Simple Mermaid.js integration via HTML
+            import streamlit.components.v1 as components
+            html_code = f"""
+            <pre class="mermaid">
+                {mermaid_code}
+            </pre>
+            <script type="module">
+                import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+                mermaid.initialize({{ startOnLoad: true, theme: 'dark' }});
+            </script>
+            """
+            components.html(html_code, height=300, scrolling=True)
+
     systems = orch.list_systems()
     if not systems:
         st.warning("No systems discovered. Please add plugins in the 'plugins' folder.")
